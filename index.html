@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>소비기한 재고관리</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">▣</span>
+      <div>
+        <div class="title">소비기한 재고관리</div>
+        <div class="sub" id="warehouseName"></div>
+      </div>
+    </div>
+    <nav class="tabs" id="tabs">
+      <button data-view="stock" class="active">재고현황</button>
+      <button data-view="upload">엑셀 업로드</button>
+      <button data-view="history">입출고 이력</button>
+      <button data-view="products">상품 마스터</button>
+    </nav>
+    <button class="btn sm ghost" id="btnGuide">사용 방법</button>
+    <div class="session" id="session"></div>
+  </header>
+
+  <div id="modeBanner" class="banner hidden"></div>
+
+  <main id="app">
+    <!-- 로그인 -->
+    <section id="view-login" class="view hidden">
+      <form class="card login" id="loginForm">
+        <h2>로그인</h2>
+        <label>이메일<input type="email" id="loginEmail" required autocomplete="username" /></label>
+        <label>비밀번호<input type="password" id="loginPw" required autocomplete="current-password" /></label>
+        <button class="btn primary" type="submit">로그인</button>
+        <p class="muted small">계정은 Supabase 대시보드 → Authentication → Users 에서 추가합니다.</p>
+      </form>
+    </section>
+
+    <!-- 재고현황 -->
+    <section id="view-stock" class="view hidden">
+      <div class="card guide" id="guide">
+        <div class="row between">
+          <h3>사용 방법</h3>
+          <button class="btn sm ghost" id="btnGuideClose">닫기</button>
+        </div>
+        <div class="guide-code">
+          <span class="muted">코드 규칙</span>
+          <span><b>부모코드</b> = 상품코드 <span class="lc"><span class="e">AG00229</span></span></span>
+          <span class="faint">→</span>
+          <span><b>자식코드</b> = 부모코드-소비기한 <span class="lc"><span class="p">AG00229-</span><span class="e">20270401</span></span></span>
+        </div>
+        <ol class="steps">
+          <li>
+            <div class="step-n">1</div>
+            <div>
+              <h4>재고 확인</h4>
+              <p>상품별 카드에서 소비기한 빠른 순으로 재고가 보입니다.</p>
+              <p class="legend"><span class="chip alert">임박</span> D-30 이내 <span class="chip warn">주의</span> D-90 이내 <span class="chip expired">경과</span> 소비기한 지남</p>
+              <p class="muted">위 요약 카드를 누르면 해당 상태만 걸러 봅니다.</p>
+            </div>
+          </li>
+          <li>
+            <div class="step-n">2</div>
+            <div>
+              <h4>출고 차감</h4>
+              <p><b>엑셀 업로드 → 출고</b>에서 출고 엑셀을 올립니다.</p>
+              <p>필요한 열: <b>상품코드 · 소비기한 · 수량</b> (또는 자식코드 · 수량)</p>
+              <p class="muted">소비기한을 비우면 빠른 소비기한부터 자동 차감합니다.</p>
+              <button class="btn sm" data-goto="out">출고 업로드 하기 →</button>
+            </div>
+          </li>
+          <li>
+            <div class="step-n">3</div>
+            <div>
+              <h4>검증 후 반영</h4>
+              <p>미리보기에서 행마다 <b>전 → 후 수량</b>을 확인하고 <b>재고에 반영</b>을 누릅니다.</p>
+              <p class="muted">재고 부족·없는 코드가 있으면 반영되지 않습니다. 같은 파일을 두 번 올리면 차단됩니다.</p>
+            </div>
+          </li>
+          <li>
+            <div class="step-n">4</div>
+            <div>
+              <h4>입고 · 실사 · 수정</h4>
+              <p><b>입고</b>: 수량을 더합니다. 새 소비기한은 자식코드가 자동으로 생깁니다.</p>
+              <p><b>실사</b>: 실제 센 수량으로 덮어씁니다.</p>
+              <p class="muted">잘못 올렸다면 <b>입출고 이력 → 되돌리기</b>, 한 건만 고칠 땐 재고 행의 <b>수정</b>.</p>
+            </div>
+          </li>
+        </ol>
+      </div>
+      <div class="kpis" id="kpis"></div>
+      <div class="toolbar">
+        <input type="search" id="stockSearch" placeholder="부모코드 · 자식코드 · 상품명 검색" />
+        <select id="stockFilter">
+          <option value="all">전체 상태</option>
+          <option value="expired">경과</option>
+          <option value="alert">임박</option>
+          <option value="warn">주의</option>
+          <option value="ok">정상</option>
+        </select>
+        <label class="check"><input type="checkbox" id="hideZero" checked /> 재고 0 숨기기</label>
+        <span class="spacer"></span>
+        <button class="btn ghost" id="btnToggleAll">모두 접기</button>
+        <button class="btn" id="btnExportStock">재고 엑셀 다운로드</button>
+      </div>
+      <div class="groups" id="stockGroups"></div>
+    </section>
+
+    <!-- 업로드 -->
+    <section id="view-upload" class="view hidden">
+      <div class="card">
+        <div class="seg" id="kindSeg">
+          <button data-kind="out" class="active">출고 (차감)</button>
+          <button data-kind="in">입고 (가산)</button>
+          <button data-kind="count">실사 (수량 맞춤)</button>
+        </div>
+        <p class="muted" id="kindHelp"></p>
+
+        <label class="drop" id="dropZone">
+          <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" hidden />
+          <strong>엑셀 파일을 끌어다 놓거나 클릭해서 선택</strong>
+          <span class="muted small">필수 열: 상품코드(부모코드) · 소비기한 · 수량 — 또는 자식코드(AG00229-20270401) · 수량</span>
+        </label>
+        <div class="row gap">
+          <button class="btn ghost" id="btnTemplate">양식 다운로드</button>
+          <span class="muted small" id="fileInfo"></span>
+        </div>
+      </div>
+
+      <div class="card hidden" id="mappingCard">
+        <div class="row between">
+          <h3>열 매칭</h3>
+          <label class="small">시트 <select id="sheetSelect"></select></label>
+        </div>
+        <div class="mapping" id="mapping"></div>
+      </div>
+
+      <div class="card hidden" id="previewCard">
+        <div class="row between wrap">
+          <h3>검증 미리보기</h3>
+          <div class="pills" id="previewSummary"></div>
+        </div>
+        <div class="scroll">
+          <table class="grid" id="previewTable"></table>
+        </div>
+        <div class="row between wrap actions">
+          <label class="check"><input type="checkbox" id="skipErrors" /> 오류 행은 제외하고 반영</label>
+          <div class="row gap">
+            <button class="btn ghost" id="btnCancel">취소</button>
+            <button class="btn primary" id="btnApply" disabled>재고에 반영</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 이력 -->
+    <section id="view-history" class="view hidden">
+      <div class="card flush">
+        <div class="card-head"><h3>업로드 내역</h3></div>
+        <div class="scroll short"><table class="grid" id="uploadTable"></table></div>
+      </div>
+      <div class="card flush">
+        <div class="card-head row between">
+          <h3 id="movementTitle">입출고 원장 (최근 500건)</h3>
+          <div class="row gap">
+            <button class="btn ghost hidden" id="btnClearMv">전체 보기</button>
+            <button class="btn" id="btnExportMv">엑셀 다운로드</button>
+          </div>
+        </div>
+        <div class="scroll"><table class="grid" id="movementTable"></table></div>
+      </div>
+    </section>
+
+    <!-- 상품 -->
+    <section id="view-products" class="view hidden">
+      <div class="card">
+        <h3>상품 추가</h3>
+        <form class="inline-form" id="productForm">
+          <input id="pCode" placeholder="부모코드 (예: AG00229)" required />
+          <input id="pName" placeholder="관리명 (예: 달콤사과 20)" required />
+          <input id="pFull" placeholder="정식 품목명" />
+          <input id="pBox" type="number" min="1" placeholder="박스입수" />
+          <button class="btn primary" type="submit">추가</button>
+        </form>
+      </div>
+      <div class="card flush"><table class="grid" id="productTable"></table></div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="config.js"></script>
+  <script src="data/seed.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
