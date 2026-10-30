@@ -6,7 +6,7 @@
 //   anon key 는 공개되어도 되는 키입니다. (로그인 + RLS 로 보호)
 // =========================================================
 window.APP_CONFIG = {
-  SUPABASE_URL: "https://kkgdqabjxfnhvqdjonjt.supabase.co/rest/v1/",
+  SUPABASE_URL: "https://kkgdqabjxfnhvqdjonjt.supabase.co",
   SUPABASE_ANON_KEY: "sb_publishable_1RMCyLWCzbgQgO3Z0olphw_ykNmIJVJ",
 
   WAREHOUSE_NAME: "A완제품창고",
