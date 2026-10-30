@@ -6,8 +6,8 @@
 //   anon key 는 공개되어도 되는 키입니다. (로그인 + RLS 로 보호)
 // =========================================================
 window.APP_CONFIG = {
-  SUPABASE_URL: "",
-  SUPABASE_ANON_KEY: "",
+  SUPABASE_URL: "https://kkgdqabjxfnhvqdjonjt.supabase.co/rest/v1/",
+  SUPABASE_ANON_KEY: "sb_publishable_1RMCyLWCzbgQgO3Z0olphw_ykNmIJVJ",
 
   WAREHOUSE_NAME: "A완제품창고",
   ALERT_DAYS: 30,   // 소비기한 D-30 이내 → 임박(빨강)
